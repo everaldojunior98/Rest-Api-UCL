@@ -21,7 +21,14 @@
             try
             {
                 if(class_exists($class) && method_exists($class, $method))
-                    return Rest::GenerateJson(true, call_user_func_array(array(new $class, $method), $parameters));
+                {
+                    $data = call_user_func_array(array(new $class, $method), $parameters);
+
+                    if($data == null)
+                        return Rest::GenerateJson(false, "4");
+                    else
+                        return Rest::GenerateJson(true, $data);
+                }
                 else
                     return Rest::GenerateJson(false, "1");
             }
@@ -50,5 +57,6 @@
         1 = Parametros incorretos ao efetuar o request
         2 = Parametros incorretos ao efetuar o login
         3 = Usuário e/ou senha inválidos
+        4 = Response invalido
      */
 ?>

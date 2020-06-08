@@ -31,6 +31,7 @@ Requests disponíveis:
 |  1 | Parametros incorretos ao efetuar o request |
 |  2 | Parametros incorretos ao efetuar o login |
 |  3 | Usuário e/ou senha inválidos |
+|  4 | Response inválido |
 
 ## License
 [MIT](https://choosealicense.com/licenses/mit/)

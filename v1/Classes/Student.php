@@ -1,7 +1,7 @@
 <?php
     class Student
     {
-        public function Login()
+        private function CheckLogin()
         {
             if(!isset($_POST['user']) || !isset($_POST['password']))
                 throw new Exception("2");
@@ -89,9 +89,9 @@
             }
         }
 
-        public function Profile()
+        public function Login()
         {
-            $curlSession = Student::Login();
+            $curlSession = Student::CheckLogin();
             $profileFrameUrl = "https://eies.ucl.br/webaluno/";
 
             if($curlSession)
@@ -122,7 +122,7 @@
 
         public function Grades()
         {
-            $curlSession = Student::Login();
+            $curlSession = Student::CheckLogin();
             $gradesFrameUrl = "https://eies.ucl.br/webaluno/quadrodenotas/";
 
             if($curlSession)
@@ -223,7 +223,7 @@
 
         public function Financial()
         {
-            $curlSession = Student::Login();
+            $curlSession = Student::CheckLogin();
             $financialUrl = "https://eies.ucl.br/webaluno/financeiro/";
 
             if($curlSession)
