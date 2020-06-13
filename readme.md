@@ -24,7 +24,7 @@ Requests disponíveis:
 * __/student/profile__  perfil do aluno
 * __/student/grades__ todas as notas do aluno
 * __/student/financial__ todas as mensalidades do aluno
-* __/student/schedule todos os horários do aluno
+* __/student/schedule__ todos os horários do aluno
 
 ### Possíveis erros
 | Código do erro  |  Mensagem  |
