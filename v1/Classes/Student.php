@@ -304,31 +304,40 @@
                 $periods = array_map('trim', explode("\n", preg_replace("/(^[\r\n]*|[\r\n]+)[\s\t]*[\r\n]+/", "\n", trim($schedulesDOM[0]->textContent))));
                 
                 $schedulesArray = array();
-                for($i = 0; $i < count($periods); $i++)
+                $daysId = array();
+                $lastId = 0;
+
+                foreach($schedulesDOM[1]->getElementsByTagName("ul") as $periodScheduleDOM)
                 {
-                    foreach($schedulesDOM[$i + 1]->getElementsByTagName("ul") as $periodScheduleDOM)
+                    $disciplineInfo = array_map('trim', explode("Professor:", $periodScheduleDOM->getElementsByTagName("h5")[0]->textContent));
+                    
+                    foreach(Student::GetElementsByClassName($periodScheduleDOM, 'row') as $row)
                     {
-                        $disciplineInfo = array_map('trim', explode("Professor:", $periodScheduleDOM->getElementsByTagName("h5")[0]->textContent));
+                        unset($info);
+                        $rowData = array_map('trim', explode("\n", $row->textContent));
                         
-                        foreach(Student::GetElementsByClassName($periodScheduleDOM, 'row') as $row)
+                        $day = utf8_decode($rowData[1]);
+                        $info->Disciplina = utf8_decode($disciplineInfo[0]);
+                        $info->Professor = utf8_decode($disciplineInfo[1]);
+                        $info->Horario = $rowData[2];
+                        $info->Sala = str_replace("Sala ", "", $rowData[3]);
+
+                        if(!array_key_exists($day, $daysId))
                         {
-                            unset($info);
-                            $rowData = array_map('trim', explode("\n", $row->textContent));
-                            
-                            $info->Disciplina = utf8_decode($disciplineInfo[0]);
-                            $info->Professor = utf8_decode($disciplineInfo[1]);
-                            $info->Horario = $rowData[2];
-                            $info->Sala = str_replace("Sala ", "", $rowData[3]);
-                            $schedulesArray[$periods[$i]][utf8_decode($rowData[1])][] = $info;
-
-                            $keys = array_column($schedulesArray[$periods[$i]][utf8_decode($rowData[1])], "Horario");
-                            array_multisort($keys, SORT_ASC, $schedulesArray[$periods[$i]][utf8_decode($rowData[1])]);
-
-                            unset($info);
+                            $daysId[$day] = $lastId;
+                            $lastId++;
                         }
+                        
+                        $schedulesArray[$daysId[$day]]->Dia = $day;
+                        $schedulesArray[$daysId[$day]]->Aulas[] = $info;
 
-                        unset($discipline);
+                        $keys = array_column($schedulesArray[$daysId[$day]]->Aulas, "Horario");
+                        array_multisort($keys, SORT_ASC, $schedulesArray[$daysId[$day]]->Aulas);
+
+                        unset($info);
                     }
+                    
+                    unset($discipline);
                 }
 
                 return $schedulesArray;
