@@ -319,7 +319,7 @@
                         $day = utf8_decode($rowData[1]);
                         $info->Disciplina = utf8_decode($disciplineInfo[0]);
                         $info->Professor = utf8_decode($disciplineInfo[1]);
-                        $info->Horario = $rowData[2];
+                        $info->Horario = explode(" ", $rowData[2])[0];
                         $info->Sala = str_replace("Sala ", "", $rowData[3]);
 
                         if(!array_key_exists($day, $daysId))
