@@ -1,23 +1,36 @@
-<?php
-    class Student
+﻿<?php
+    class WebAluno
     {
+		private function GetElementsByClassName($dom, $ClassName, $tagName = null)
+        {
+            $Elements = $tagName ? $dom->getElementsByTagName($tagName) : $dom->getElementsByTagName("*");
+    
+            $Matched = array();
+            for($i = 0; $i<$Elements->length; $i++)
+                if($Elements->item($i)->attributes->getNamedItem("class"))
+                    if(strpos($Elements->item($i)->attributes->getNamedItem("class")->nodeValue, $ClassName) !== false)
+                        $Matched[]=$Elements->item($i);
+    
+            return $Matched;
+        }
+		
         private function CheckLogin()
         {
-            if(!isset($_POST['user']) || !isset($_POST['password']))
-                throw new Exception("2");
+            if(!isset($_POST["user"]) || !isset($_POST["password"]))
+                throw new Exception("Parâmetros incorretos ao efetuar o login");
 
             $loginUrl = "https://eies.ucl.br/webaluno/login/?next=/webaluno/";
 
             $csrf_token_field_name = "csrfmiddlewaretoken";
             $params = array(
-                "user" => $_POST['user'],
-                "password" => $_POST['password']
+                "user" => $_POST["user"],
+                "password" => $_POST["password"]
             );
         
-            $token_cookie= realpath("cookie.txt");
+            $token_cookie = realpath("cookie.txt");
             $ch = curl_init();
             curl_setopt($ch, CURLOPT_URL, $loginUrl);
-            curl_setopt($ch, CURLOPT_USERAGENT,'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/32.0.1700.107 Chrome/32.0.1700.107 Safari/537.36');
+            curl_setopt($ch, CURLOPT_USERAGENT,"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/32.0.1700.107 Chrome/32.0.1700.107 Safari/537.36");
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_COOKIEJAR, $token_cookie);
             curl_setopt($ch, CURLOPT_COOKIEFILE, $token_cookie);
@@ -32,13 +45,12 @@
             libxml_use_internal_errors(true);
             $dom = new DomDocument();
             $dom->loadHTML($response);
-            libxml_use_internal_errors(false);
             $tokens = $dom->getElementsByTagName("input");
             for ($i = 0; $i < $tokens->length; $i++) 
             {
                 $meta = $tokens->item($i);
-                if($meta->getAttribute('name') == 'csrfmiddlewaretoken')
-                    $token = $meta->getAttribute('value');
+                if($meta->getAttribute("name") == "csrfmiddlewaretoken")
+                    $token = $meta->getAttribute("value");
             }
         
             if($token)
@@ -82,16 +94,17 @@
                 $result = curl_getinfo($ch);
                 ob_get_clean();
         
-                if(!(array_key_exists("redirect_count", $result) ? $result['redirect_count'] > 0 : false))
-                    throw new Exception("3");
+                if(!(array_key_exists("redirect_count", $result) ? $result["redirect_count"] > 0 : false))
+                    throw new Exception("Nome de usuário ou senha incorretos");
                     
                 return $ch;
             }
         }
 
+		//Request return functions
         public function Login()
         {
-            $curlSession = Student::CheckLogin();
+            $curlSession = WebAluno::CheckLogin();
             $profileFrameUrl = "https://eies.ucl.br/webaluno/";
 
             if($curlSession)
@@ -102,14 +115,15 @@
                 $profileDOM = new DOMDocument();
                 $profileDOM->loadHTML($profileHtml);
     
-                $userDOM = $profileDOM->getElementById('slide-out');
+                $userDOM = $profileDOM->getElementById("slide-out");
     
-                $info = Student::GetElementsByClassName($profileDOM, 'center-align');
+                $info = WebAluno::GetElementsByClassName($profileDOM, "center-align");
     
-                $profile->Nome = preg_split('/$\R?^/m', trim($info[1]->textContent))[0];
-                $profile->Imagem = $info[0]->getElementsByTagName('img')[0]->getAttribute('src');
+				$profile = new stdClass();
+                $profile->Nome = preg_split("/$\R?^/m", trim($info[1]->textContent))[0];
+                $profile->Imagem = $info[0]->getElementsByTagName("img")[0]->getAttribute("src");
     
-                $info = $userDOM->getElementsByTagName('span');
+                $info = $userDOM->getElementsByTagName("span");
     
                 $profile->Email = trim($info[0]->textContent);
                 $profile->Curso = trim($info[1]->textContent);
@@ -120,9 +134,9 @@
             }
         }
 
-        public function Grades()
+        public function QuadroDeNotas()
         {
-            $curlSession = Student::CheckLogin();
+            $curlSession = WebAluno::CheckLogin();
             $gradesFrameUrl = "https://eies.ucl.br/webaluno/quadrodenotas/";
 
             if($curlSession)
@@ -133,42 +147,42 @@
                 $gradesFrameDOM = new DOMDocument();
                 $gradesFrameDOM->loadHTML($gradesFrameHtml);
     
-                $gradesDOM = $gradesFrameDOM->getElementById('aluno_notas');
+                $gradesDOM = $gradesFrameDOM->getElementById("aluno_notas");
                 
                 $gradesArray = array();
                 $currentPeriodId = 0;
 
-                foreach(preg_split('/$\R?^/m', trim(Student::GetElementsByClassName($gradesDOM, 'col s12')[0]->textContent)) as $period)
+                foreach(preg_split("/$\R?^/m", trim(WebAluno::GetElementsByClassName($gradesDOM, "col s12")[0]->textContent)) as $period)
                 {
                     $period = trim($period);
                     if(!empty($period))
                     {
-                        $id = str_replace('/', '-', $period); 
+                        $id = str_replace("/", "-", $period); 
                         $periodDOM = $gradesFrameDOM->getElementById($id);
                         $disciplineNames = array();
     
-                        foreach(Student::GetElementsByClassName($periodDOM, 'collapsible-header') as $disciplineName)
-                            $disciplineNames[] = trim(str_replace('keyboard_arrow_right', '', $disciplineName->textContent));
+                        foreach(WebAluno::GetElementsByClassName($periodDOM, "collapsible-header") as $disciplineName)
+                            $disciplineNames[] = trim(str_replace("keyboard_arrow_right", "", $disciplineName->textContent));
     
                         $disciplineInfo = array();
                         $count = 0;
-                        foreach(Student::GetElementsByClassName($periodDOM, 'center-align') as $infos)
+                        foreach(WebAluno::GetElementsByClassName($periodDOM, "center-align") as $infos)
                         {
-                            $disciplineInfo[$currentPeriodId][$count]["Professor"] = trim(explode("(", explode("\n", explode(":", Student::GetElementsByClassName($periodDOM, 'collection-item dismissable')[$count]->nodeValue)[1])[0])[0]);
+                            $disciplineInfo[$currentPeriodId][$count]["Professor"] = trim(explode("(", explode("\n", explode(":", WebAluno::GetElementsByClassName($periodDOM, "collection-item dismissable")[$count]->nodeValue)[1])[0])[0]);
                             
-                            foreach(preg_split('/$\R?^/m', trim($infos->nodeValue)) as $info)
+                            foreach(preg_split("/$\R?^/m", trim($infos->nodeValue)) as $info)
                                 $disciplineInfo[$currentPeriodId][$count][explode(":", trim($info))[0]] = trim(explode(":", $info)[1]);
                             $count++;
                         }
                         
                         $disciplineId = 0;
-                        foreach(Student::GetElementsByClassName($periodDOM, 'striped') as $discipline)
+                        foreach(WebAluno::GetElementsByClassName($periodDOM, "striped") as $discipline)
                         {
                             $gradesByGroupArray = array();
                             $headerArray = array();
     
-                            $header = $discipline->getElementsByTagName('th');
-                            $lines = $discipline->getElementsByTagName('td');
+                            $header = $discipline->getElementsByTagName("th");
+                            $lines = $discipline->getElementsByTagName("td");
     
                             foreach($header as $nodeHeader) 
                                 $headerArray[] = trim($nodeHeader->textContent);
@@ -209,7 +223,7 @@
                                     $i++;
                                 }
                                 
-                                $gradesArray[$period][$disciplineId]['Notas'][] = $newGrade;
+                                $gradesArray[$period][$disciplineId]["Notas"][] = $newGrade;
                             }
                             $disciplineId++;
                         }
@@ -221,9 +235,9 @@
             }
         }
 
-        public function Financial()
+        public function Financeiro()
         {
-            $curlSession = Student::CheckLogin();
+            $curlSession = WebAluno::CheckLogin();
             $financialUrl = "https://eies.ucl.br/webaluno/financeiro/";
 
             if($curlSession)
@@ -233,35 +247,11 @@
 
                 $financesDOM = new DOMDocument();
                 $financesDOM->loadHTML($financesHtml);
-                
-                $openInvoicesDOM = $financesDOM->getElementById('fin1');
+				
+                $allInvoicesDOM = $financesDOM->getElementById("fin2");
 
-                $header = $openInvoicesDOM->getElementsByTagName('th');
-                $lines = $openInvoicesDOM->getElementsByTagName('td');
-
-                foreach($header as $nodeHeader)
-                    $openInvoicesHeader[] = trim($nodeHeader->textContent);
-
-                $i = 0;
-                $j = 0;
-
-                foreach($lines as $line) 
-                {
-                    $tempOpenInvoicesArray[$j][] = trim($line->textContent);
-                    $i++;
-                    $j = $i % count($openInvoicesHeader) == 0 ? $j + 1 : $j;
-                }
-
-                for($i = 0; $i < count($tempOpenInvoicesArray); $i++)            
-                    for($j = 0; $j < count($openInvoicesHeader); $j++)
-                        $openInvoicesArray[$i][$openInvoicesHeader[$j]] = $tempOpenInvoicesArray[$i][$j];
-
-                $WebAluno->Financeiro->FaturasEmAberto = $openInvoicesArray;
-
-                $allInvoicesDOM = $financesDOM->getElementById('fin2');
-
-                $header = $allInvoicesDOM->getElementsByTagName('th');
-                $lines = $allInvoicesDOM->getElementsByTagName('td');
+                $header = $allInvoicesDOM->getElementsByTagName("th");
+                $lines = $allInvoicesDOM->getElementsByTagName("td");
 
                 foreach($header as $nodeHeader) 
                     $allInvoicesHeader[] = trim($nodeHeader->textContent);
@@ -284,9 +274,9 @@
             }
         }
 
-        public function Schedule()
+        public function HorarioIndividual()
         {
-            $curlSession = Student::CheckLogin();
+            $curlSession = WebAluno::CheckLogin();
             $scheduleUrl = "https://eies.ucl.br/webaluno/horarioindividual/";
 
             if($curlSession)
@@ -296,65 +286,164 @@
 
                 $schedulePageDOM = new DOMDocument();
                 $schedulePageDOM->loadHTML($scheduleHtml);
-
-                $scheduleDOM = $schedulePageDOM->getElementById('aluno_horarios');
-                
-                $schedulesDOM = Student::GetElementsByClassName($scheduleDOM, 'col s12');
-                    
-                $periods = array_map('trim', explode("\n", preg_replace("/(^[\r\n]*|[\r\n]+)[\s\t]*[\r\n]+/", "\n", trim($schedulesDOM[0]->textContent))));
-                
-                $schedulesArray = array();
-                $daysId = array();
-                $lastId = 0;
-
-                foreach($schedulesDOM[1]->getElementsByTagName("ul") as $periodScheduleDOM)
-                {
-                    $disciplineInfo = array_map('trim', explode("Professor:", $periodScheduleDOM->getElementsByTagName("h5")[0]->textContent));
-                    
-                    foreach(Student::GetElementsByClassName($periodScheduleDOM, 'row') as $row)
-                    {
-                        unset($info);
-                        $rowData = array_map('trim', explode("\n", $row->textContent));
-                        
-                        $day = utf8_decode($rowData[1]);
-                        $info->Disciplina = utf8_decode($disciplineInfo[0]);
-                        $info->Professor = utf8_decode($disciplineInfo[1]);
-                        $info->Horario = explode(" ", $rowData[2])[0];
-                        $info->Sala = str_replace("Sala ", "", $rowData[3]);
-
-                        if(!array_key_exists($day, $daysId))
-                        {
-                            $daysId[$day] = $lastId;
-                            $lastId++;
-                        }
-                        
-                        $schedulesArray[$daysId[$day]]->Dia = $day;
-                        $schedulesArray[$daysId[$day]]->Aulas[] = $info;
-
-                        $keys = array_column($schedulesArray[$daysId[$day]]->Aulas, "Horario");
-                        array_multisort($keys, SORT_ASC, $schedulesArray[$daysId[$day]]->Aulas);
-
-                        unset($info);
-                    }
-                    
-                    unset($discipline);
-                }
+				
+                $schedulesDOM = WebAluno::GetElementsByClassName($schedulePageDOM->getElementById("aluno_horarios"), "col s12");
+				$schedulesArray = array();
+				
+				foreach ($schedulesDOM as $scheduleDOM)
+				{
+					$domId = $scheduleDOM->getAttribute("id");
+					if(!empty($domId))
+					{
+						$period = substr($domId, 0, -1)."/".substr($domId, -1);
+						$schedulesArray[$period] = array("Segunda-feira" => array(), "Terça-feira" => array(), "Quarta-feira" => array(), "Quinta-feira" => array(), "Sexta-feira" => array());
+						
+						foreach ($scheduleDOM->getElementsByTagName("ul") as $row)
+						{
+							$header = $row->getElementsByTagName("h5")[0]->nodeValue;
+							$headerInfo = explode(" Professor: ", $header);
+							$discipline = trim($headerInfo[0]);
+							$teacher = trim($headerInfo[1]);
+							
+							foreach (WebAluno::GetElementsByClassName($row, "row") as $schedule)
+							{
+								$infos = WebAluno::GetElementsByClassName($schedule, "col s4 center-align");
+								
+								$day = utf8_decode($infos[0]->nodeValue);
+								
+								$daySchedule = new stdClass();
+								$daySchedule->Disciplina = utf8_decode($discipline);
+								$daySchedule->Professor = utf8_decode($teacher);
+								$daySchedule->Horário = trim(explode("?", utf8_decode($infos[1]->nodeValue))[0]);
+								$daySchedule->Sala = utf8_decode(trim($infos[2]->nodeValue));
+								
+								if(array_key_exists($day, $schedulesArray[$period]))
+									$schedulesArray[$period][$day][] = $daySchedule;
+							}
+						}
+					}
+				}
 
                 return $schedulesArray;
             }
         }
-
-        function GetElementsByClassName($dom, $ClassName, $tagName = null)
+		
+		public function PautasCursadas()
         {
-            $Elements = $tagName ? $dom->getElementsByTagName($tagName) : $dom->getElementsByTagName("*");
-    
-            $Matched = array();
-            for($i = 0; $i<$Elements->length; $i++)
-                if($Elements->item($i)->attributes->getNamedItem('class'))
-                    if(strpos($Elements->item($i)->attributes->getNamedItem('class')->nodeValue, $ClassName) !== false)
-                        $Matched[]=$Elements->item($i);
-    
-            return $Matched;
+            $curlSession = WebAluno::CheckLogin();
+            $coursesTakenUrl = "https://eies.ucl.br/webaluno/pautascursadas/";
+
+            if($curlSession)
+            {
+                curl_setopt($curlSession, CURLOPT_URL, $coursesTakenUrl);
+                $coursesTakenHtml = curl_exec($curlSession);
+
+                $coursesTakenPageDOM = new DOMDocument();
+                $coursesTakenPageDOM->loadHTML($coursesTakenHtml);
+				
+				$tables = $coursesTakenPageDOM->getElementsByTagName("table");
+				$rows = $tables->item(0)->getElementsByTagName("tr");
+				$coursesTakenArray = array();
+				$lastPeriod = null;
+
+				foreach ($rows as $row)
+				{
+					$cols = $row->getElementsByTagName("td");
+					$info = trim($row->textContent);
+					
+					if(strpos($info, "–") === false)
+					{
+						if($lastPeriod != null)
+						{
+							$discipline = trim($cols[0]->textContent);
+							
+							if(strlen($discipline) < 100)
+							{
+								$courseTaken = new stdClass();
+								$courseTaken->Disciplina = $discipline;
+								$courseTaken->CH = trim($cols[1]->textContent);
+								$courseTaken->Nota = trim($cols[2]->textContent);
+								$courseTaken->Situação = trim($cols[3]->textContent);
+								
+								$coursesTakenArray[$lastPeriod][] = $courseTaken;	
+							}
+						}
+					}
+					else
+					{
+						$lastPeriod = trim(explode("–", $info)[0]);
+					}
+				}
+                
+                return array_reverse($coursesTakenArray);
+            }
+        }
+		
+		public function Avisos()
+        {
+            $curlSession = WebAluno::CheckLogin();
+            $noticesUrl = "https://eies.ucl.br/webaluno/";
+
+            if($curlSession)
+            {
+                curl_setopt($curlSession, CURLOPT_URL, $noticesUrl);
+                $noticesHtml = curl_exec($curlSession);
+
+                $noticesPageDOM = new DOMDocument();
+                $noticesPageDOM->loadHTML($noticesHtml);
+				$noticesArray = array();
+				
+				foreach ($noticesPageDOM->getElementById("noticia-aluno")->getElementsByTagName("li") as $noticeDOM)
+				{
+					$image = $noticeDOM->getElementsByTagName("img")[0]->getAttribute("src");
+					
+					$headerDOM = WebAluno::GetElementsByClassName($noticeDOM, "noticia-content")[0];
+					$date = $headerDOM->getElementsByTagName("em")[0]->nodeValue;
+					$title = str_replace($date, "", $headerDOM->nodeValue);
+					$body = trim(WebAluno::GetElementsByClassName($noticeDOM, "collapsible-body")[0]->nodeValue);
+					
+					$notice = new stdClass();
+					$notice->Título = $title;
+					$notice->Data = $date;
+					$notice->Conteúdo = $body;
+					
+					$noticesArray[] = $notice;
+				}
+				
+                return $noticesArray;
+            }
+        }
+		
+		public function Estagio()
+        {
+            $curlSession = WebAluno::CheckLogin();
+            $internshipUrl = "https://eies.ucl.br/webaluno/infoestagio/";
+
+            if($curlSession)
+            {
+                curl_setopt($curlSession, CURLOPT_URL, $internshipUrl);
+                $internshipHtml = curl_exec($curlSession);
+
+                $internshipPageDOM = new DOMDocument();
+                $internshipPageDOM->loadHTML($internshipHtml);
+				$internshipHtmlArray = array();
+				
+				foreach (WebAluno::GetElementsByClassName($internshipPageDOM, "collapsible vagas-estagio")[0]->getElementsByTagName("li") as $internshipDOM)
+				{
+					$title = explode("\n", trim(utf8_decode(str_replace("keyboard_arrow_right", "", $internshipDOM->textContent))))[0];
+					$img = $internshipDOM->getElementsByTagName("img")[0];
+					if($img != null)
+					{
+						$internship = new stdClass();
+						$internship->Título = $title;
+						$internship->Conteúdo = $img->getAttribute("src");
+						
+						$internshipHtmlArray[] = $internship;
+					}
+				}
+				
+                return $internshipHtmlArray;
+            }
         }
     }
 ?>

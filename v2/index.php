@@ -1,7 +1,10 @@
-<?php
+﻿<?php
     header('Content-Type: application/json; charset=utf-8');
+	setlocale(LC_ALL,'pt_BR.UTF8');
+	mb_internal_encoding('UTF8');
+	mb_regex_encoding('UTF8');
 
-    require_once 'Classes/Student.php';
+    require_once 'Classes/WebAluno.php';
 
     class Rest
     {
@@ -25,38 +28,29 @@
                     $data = call_user_func_array(array(new $class, $method), $parameters);
 
                     if($data == null)
-                        return Rest::GenerateJson(false, "4");
+                        return Rest::GenerateJson(null, "Response inválido");
                     else
-                        return Rest::GenerateJson(true, $data);
+                        return Rest::GenerateJson($data, null);
                 }
                 else
-                    return Rest::GenerateJson(false, "1");
+                    return Rest::GenerateJson(null, "Parâmetros incorretos");
             }
             catch(Exception $e)
             {
-                return Rest::GenerateJson(false, $e->getMessage());
+                return Rest::GenerateJson(null, $e->getMessage());
             }
         }
 
-        public static function GenerateJson($success, $data)
+        public static function GenerateJson($data, $error)
         {
-            if(!$success)
-                header('HTTP/1.1 500 Internal Server Error');
+            if($error)
+                header("X-Error-Message: ".utf8_decode($error), true, 500);
 
-            return json_encode(array("success" => $success, "data" => $data));
+            return json_encode($data);
         }
     }
 
     //Handle the request
     if(isset($_REQUEST))
         echo Rest::Open($_REQUEST);
-
-    /*
-    ERROR TABLE
-        Em caso de erro servidor retornar http 500 error
-        1 = Parametros incorretos ao efetuar o request
-        2 = Parametros incorretos ao efetuar o login
-        3 = Usuário e/ou senha inválidos
-        4 = Response invalido
-     */
 ?>
