@@ -1,4 +1,6 @@
 ﻿<?php
+	require_once 'Utils.php';
+
     class WebAluno
     {
 		private function GetElementsByClassName($dom, $ClassName, $tagName = null)
@@ -9,93 +11,59 @@
             for($i = 0; $i<$Elements->length; $i++)
                 if($Elements->item($i)->attributes->getNamedItem("class"))
                     if(strpos($Elements->item($i)->attributes->getNamedItem("class")->nodeValue, $ClassName) !== false)
-                        $Matched[]=$Elements->item($i);
+                        $Matched[] = $Elements->item($i);
     
             return $Matched;
         }
 		
         private function CheckLogin()
         {
+			libxml_use_internal_errors(true);
             if(!isset($_POST["user"]) || !isset($_POST["password"]))
-                throw new Exception("Parâmetros incorretos ao efetuar o login");
+                throw new Exception(Utils::InvalidLogin);
 
-            $loginUrl = "https://eies.ucl.br/webaluno/login/?next=/webaluno/";
-
-            $csrf_token_field_name = "csrfmiddlewaretoken";
-            $params = array(
-                "user" => $_POST["user"],
-                "password" => $_POST["password"]
-            );
-        
-            $token_cookie = realpath("cookie.txt");
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, $loginUrl);
-            curl_setopt($ch, CURLOPT_USERAGENT,"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/32.0.1700.107 Chrome/32.0.1700.107 Safari/537.36");
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_COOKIEJAR, $token_cookie);
-            curl_setopt($ch, CURLOPT_COOKIEFILE, $token_cookie);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
-            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-            $response = curl_exec($ch);
-        
-            if (curl_errno($ch)) 
-                die(curl_error($ch));
-        
-            libxml_use_internal_errors(true);
-            $dom = new DomDocument();
-            $dom->loadHTML($response);
-            $tokens = $dom->getElementsByTagName("input");
-            for ($i = 0; $i < $tokens->length; $i++) 
-            {
-                $meta = $tokens->item($i);
-                if($meta->getAttribute("name") == "csrfmiddlewaretoken")
-                    $token = $meta->getAttribute("value");
-            }
-        
+            $username = $_POST["user"];
+			$password = $_POST["password"];
+			
+            $loginUrl = "https://eies.ucl.br/webaluno/login/";
+			$cookie= "cookies.txt";
+			$ch = curl_init();
+			curl_setopt($ch, CURLOPT_URL, $loginUrl);
+			curl_setopt($ch, CURLOPT_COOKIEJAR, $cookie);
+			curl_setopt($ch, CURLOPT_COOKIEFILE, $cookie);
+			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+			$response = curl_exec($ch);
+			
+			if (curl_errno($ch))
+				throw new Exception(Utils::ServerError);
+			
+			$dom = new DomDocument();
+			$dom->loadHTML($response);
+			$tokens = $dom->getElementsByTagName("input");
+			for ($i = 0; $i < $tokens->length; $i++)
+			{
+				$meta = $tokens->item($i);
+				if($meta->getAttribute('name') == 'csrfmiddlewaretoken')
+					$token = $meta->getAttribute('value');
+			}
+			
             if($token)
             {
-                $postinfo = "";
-                foreach($params as $param_key => $param_value) 
-                    $postinfo .= $param_key ."=". $param_value . "&";	
-                $postinfo .= $csrf_token_field_name ."=". $token;
-        
-                $headers = array();
-                $header[0] = "Accept: text/xml,application/xml,application/xhtml+xml,";
-                $header[] = "Cache-Control: max-age=0";
-                $header[] = "Connection: keep-alive";
-                $header[] = "Keep-Alive: 300";
-                $header[] = "Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7";
-                $header[] = "Accept-Language: en-us,en;q=0.5";
-                $header[] = "Pragma: ";
-                $headers[] = "X-CSRF-Token: $token";
-                $headers[] = "Cookie: $token_cookie";
+                $postinfo = "csrfmiddlewaretoken=".$token."&user=".$username."&password=".$password;
 
-                curl_setopt($ch, CURLOPT_URL, $loginUrl);
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.6) Gecko/20070725 Firefox/2.0.0.6");
-                curl_setopt($ch, CURLOPT_COOKIEJAR, $token_cookie);
-                curl_setopt($ch, CURLOPT_COOKIEFILE, $token_cookie);
-                curl_setopt($ch, CURLOPT_POST, true);
-                curl_setopt($ch, CURLOPT_POSTFIELDS, $postinfo);
-                curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-                curl_setopt($ch, CURLOPT_REFERER, $loginUrl);
-                curl_setopt($ch, CURLOPT_ENCODING, "gzip,deflate");
-                curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-                curl_setopt($ch, CURLOPT_TIMEOUT, 260);
-                curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
-                curl_setopt($ch, CURLOPT_VERBOSE, true);
-                curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        
-                ob_start();
+				curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+				curl_setopt($ch, CURLOPT_POST, true);
+				curl_setopt($ch, CURLOPT_COOKIEJAR, $cookie);
+				curl_setopt($ch, CURLOPT_COOKIEFILE, $cookie);
+				curl_setopt($ch, CURLOPT_POSTFIELDS, $postinfo);
+				curl_setopt($ch, CURLOPT_REFERER, $loginUrl);
+				curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+				
                 $loginHtml = curl_exec($ch);
                 $result = curl_getinfo($ch);
-                ob_get_clean();
         
                 if(!(array_key_exists("redirect_count", $result) ? $result["redirect_count"] > 0 : false))
-                    throw new Exception("Nome de usuário ou senha incorretos");
+                    throw new Exception(Utils::IncorrectLogin);
                     
                 return $ch;
             }
@@ -109,7 +77,9 @@
 
             if($curlSession)
             {
-                curl_setopt($curlSession, CURLOPT_URL, $profileFrameUrl);
+				curl_setopt($curlSession, CURLOPT_URL, $profileFrameUrl);
+				curl_setopt($curlSession, CURLOPT_POST, false);
+				
                 $profileHtml = curl_exec($curlSession);
 
                 $profileDOM = new DOMDocument();
@@ -141,7 +111,9 @@
 
             if($curlSession)
             {
-                curl_setopt($curlSession, CURLOPT_URL, $gradesFrameUrl);
+				curl_setopt($curlSession, CURLOPT_URL, $gradesFrameUrl);
+				curl_setopt($curlSession, CURLOPT_POST, false);
+				
                 $gradesFrameHtml = curl_exec($curlSession);
                 
                 $gradesFrameDOM = new DOMDocument();
@@ -189,11 +161,13 @@
     
                             $i = 0;
                             $j = 0;
+							
                             foreach($lines as $line) 
                             {
-                                $gradesByGroupArray[] = trim($line->textContent);
-                                $i++;
-                                $j = $i % count($headerArray) == 0 ? $j + 1 : $j;
+								$gradesByGroupArray[] = explode("\n", trim($line->textContent))[0];
+									
+								$i++;
+								$j = $i % count($headerArray) == 0 ? $j + 1 : $j;
                             }
     
                             $allGrades = array();
@@ -219,7 +193,8 @@
                                 $i = 0;
                                 foreach($grades as $grade)
                                 {
-                                    $newGrade[$headerArray[$i]] = $grade;
+									if($i < 5)
+										$newGrade[$headerArray[$i]] = $grade;
                                     $i++;
                                 }
                                 
@@ -242,33 +217,48 @@
 
             if($curlSession)
             {
-                curl_setopt($curlSession, CURLOPT_URL, $financialUrl);
+				curl_setopt($curlSession, CURLOPT_URL, $financialUrl);
+				curl_setopt($curlSession, CURLOPT_POST, false);
+				
                 $financesHtml = curl_exec($curlSession);
 
                 $financesDOM = new DOMDocument();
                 $financesDOM->loadHTML($financesHtml);
 				
                 $allInvoicesDOM = $financesDOM->getElementById("fin2");
+				
+				$tables = $allInvoicesDOM->getElementsByTagName('table');
 
-                $header = $allInvoicesDOM->getElementsByTagName("th");
-                $lines = $allInvoicesDOM->getElementsByTagName("td");
-
-                foreach($header as $nodeHeader) 
-                    $allInvoicesHeader[] = trim($nodeHeader->textContent);
-                
-                $i = 0;
-                $j = 0;
-                
-                foreach($lines as $line) 
-                {
-                    $tempAllInvoicesArray[$j][] = trim($line->textContent);
-                    $i++;
-                    $j = $i % count($allInvoicesHeader) == 0 ? $j + 1 : $j;
-                }
-
-                for($i = 0; $i < count($tempAllInvoicesArray); $i++)            
-                    for($j = 0; $j < count($allInvoicesHeader); $j++)
-                        $allInvoicesArray[$i][$allInvoicesHeader[$j]] = $tempAllInvoicesArray[$i][$j];
+				$tablesName = array("Parcelas", "Secretaria", "Matrículas");
+				$allInvoicesArray = array();
+				
+				$j = 0;
+				foreach ($tables as $table)
+				{
+					$rows = $table->getElementsByTagName('tr');
+					$i = 0;
+					
+					foreach ($rows as $row)
+					{
+						if($i > 0)
+						{
+							$cols = explode("\n", $row->textContent);
+							
+							$line = new stdClass();
+							$line->Ocorrência = trim($cols[0]);
+							$line->Processamento = trim($cols[1]);
+							$line->Vencimento = trim($cols[2]);
+							$line->Valor = trim($cols[3]);
+							$line->Pagamento = isset($cols[7]) && strlen(trim($cols[7])) > 3 ? trim($cols[7]) : "";
+							$line->ValorPago = isset($cols[11]) && strlen(trim($cols[11])) > 3 ? trim($cols[11]) : "";
+							
+							$allInvoicesArray[$tablesName[$j]][] = $line;
+						}
+						$i++;
+					}
+					
+					$j++;
+				}
                 
                 return $allInvoicesArray;
             }
@@ -281,7 +271,9 @@
 
             if($curlSession)
             {
-                curl_setopt($curlSession, CURLOPT_URL, $scheduleUrl);
+				curl_setopt($curlSession, CURLOPT_URL, $scheduleUrl);
+				curl_setopt($curlSession, CURLOPT_POST, false);
+				
                 $scheduleHtml = curl_exec($curlSession);
 
                 $schedulePageDOM = new DOMDocument();
@@ -335,7 +327,9 @@
 
             if($curlSession)
             {
-                curl_setopt($curlSession, CURLOPT_URL, $coursesTakenUrl);
+				curl_setopt($curlSession, CURLOPT_URL, $coursesTakenUrl);
+				curl_setopt($curlSession, CURLOPT_POST, false);
+				
                 $coursesTakenHtml = curl_exec($curlSession);
 
                 $coursesTakenPageDOM = new DOMDocument();
@@ -386,7 +380,9 @@
 
             if($curlSession)
             {
-                curl_setopt($curlSession, CURLOPT_URL, $noticesUrl);
+				curl_setopt($curlSession, CURLOPT_URL, $noticesUrl);
+				curl_setopt($curlSession, CURLOPT_POST, false);
+				
                 $noticesHtml = curl_exec($curlSession);
 
                 $noticesPageDOM = new DOMDocument();
@@ -421,7 +417,9 @@
 
             if($curlSession)
             {
-                curl_setopt($curlSession, CURLOPT_URL, $internshipUrl);
+				curl_setopt($curlSession, CURLOPT_URL, $internshipUrl);
+				curl_setopt($curlSession, CURLOPT_POST, false);
+				
                 $internshipHtml = curl_exec($curlSession);
 
                 $internshipPageDOM = new DOMDocument();

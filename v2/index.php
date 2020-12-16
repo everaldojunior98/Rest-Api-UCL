@@ -5,6 +5,7 @@
 	mb_regex_encoding('UTF8');
 
     require_once 'Classes/WebAluno.php';
+	require_once 'Classes/Utils.php';
 
     class Rest
     {
@@ -28,12 +29,12 @@
                     $data = call_user_func_array(array(new $class, $method), $parameters);
 
                     if($data == null)
-                        return Rest::GenerateJson(null, "Response inválido");
+                        return Rest::GenerateJson(null, Utils::InvalidResponse);
                     else
                         return Rest::GenerateJson($data, null);
                 }
                 else
-                    return Rest::GenerateJson(null, "Parâmetros incorretos");
+                    return Rest::GenerateJson(null, Utils::IncorrectParameters);
             }
             catch(Exception $e)
             {
@@ -43,10 +44,11 @@
 
         public static function GenerateJson($data, $error)
         {
-            if($error)
-                header("X-Error-Message: ".utf8_decode($error), true, 500);
+            if($error === null)
+			    return json_encode(array("Message" => utf8_decode(Utils::Success), "Data" => $data));
 
-            return json_encode($data);
+            header("X-Error-Message: ".utf8_decode($error), true, 500);
+			return json_encode(array("Message" => $error, "Data" => $data));
         }
     }
 
