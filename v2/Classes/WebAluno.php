@@ -20,7 +20,10 @@
         {
 			libxml_use_internal_errors(true);
             if(!isset($_POST["user"]) || !isset($_POST["password"]))
-                throw new Exception(Utils::InvalidLogin);
+			{
+				http_response_code(401);
+				throw new Exception(Utils::InvalidLogin);
+			}
 
             $username = $_POST["user"];
 			$password = $_POST["password"];
@@ -35,7 +38,10 @@
 			$response = curl_exec($ch);
 			
 			if (curl_errno($ch))
+			{
+				http_response_code(500);
 				throw new Exception(Utils::ServerError);
+			}
 			
 			$dom = new DomDocument();
 			$dom->loadHTML($response);
@@ -63,7 +69,10 @@
                 $result = curl_getinfo($ch);
         
                 if(!(array_key_exists("redirect_count", $result) ? $result["redirect_count"] > 0 : false))
-                    throw new Exception(Utils::IncorrectLogin);
+				{
+					http_response_code(401);
+					throw new Exception(Utils::IncorrectLogin);
+				}
                     
                 return $ch;
             }
@@ -392,16 +401,20 @@
 				foreach ($noticesPageDOM->getElementById("noticia-aluno")->getElementsByTagName("li") as $noticeDOM)
 				{
 					$image = $noticeDOM->getElementsByTagName("img")[0]->getAttribute("src");
+					$image = "https://".explode("//", $image)[1];
 					
 					$headerDOM = WebAluno::GetElementsByClassName($noticeDOM, "noticia-content")[0];
 					$date = $headerDOM->getElementsByTagName("em")[0]->nodeValue;
 					$title = str_replace($date, "", $headerDOM->nodeValue);
-					$body = trim(WebAluno::GetElementsByClassName($noticeDOM, "collapsible-body")[0]->nodeValue);
+					$body = preg_replace("/>(\s)+</m", "><", str_replace("\n", "", preg_replace("/<!--(.|\s)*?-->/", "", $noticesPageDOM->saveXML(WebAluno::GetElementsByClassName($noticeDOM, "collapsible-body")[0]))));
+					$body = str_replace("<div class=\"collapsible-body\">", "", $body);
+					$body = substr($body, 0, -6);
 					
 					$notice = new stdClass();
 					$notice->Título = $title;
 					$notice->Data = $date;
 					$notice->Conteúdo = $body;
+					$notice->Imagem = $image;
 					
 					$noticesArray[] = $notice;
 				}

@@ -29,12 +29,21 @@
                     $data = call_user_func_array(array(new $class, $method), $parameters);
 
                     if($data == null)
-                        return Rest::GenerateJson(null, Utils::InvalidResponse);
+					{
+						http_response_code(404);
+						return Rest::GenerateJson(null, Utils::InvalidResponse);
+					}
                     else
-                        return Rest::GenerateJson($data, null);
+					{
+						http_response_code(200);
+						return Rest::GenerateJson($data, null);
+					}
                 }
                 else
-                    return Rest::GenerateJson(null, Utils::IncorrectParameters);
+				{
+					http_response_code(400);
+					return Rest::GenerateJson(null, Utils::IncorrectParameters);
+				}
             }
             catch(Exception $e)
             {
@@ -46,8 +55,6 @@
         {
             if($error === null)
 			    return json_encode(array("Message" => utf8_decode(Utils::Success), "Data" => $data));
-
-            header("X-Error-Message: ".utf8_decode($error), true, 500);
 			return json_encode(array("Message" => $error, "Data" => $data));
         }
     }
